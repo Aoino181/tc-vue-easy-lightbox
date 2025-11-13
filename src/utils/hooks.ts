@@ -78,6 +78,7 @@ export const useMouse = (
       }
     }
     e.stopPropagation()
+    // clampPosition()
   }
 
   return {

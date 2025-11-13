@@ -12,7 +12,9 @@
       :imgs="imgsRef"
       :index="indexRef"
       :pinchDisabled="pinchRef"
-      :dblclickDisabled="true"
+      :dblclickDisabled="false"
+      :moveDisabled="false"
+      :zoomScale="0.24"
       @hide="onHide"
       @on-index-change="onIndexChange"
       @on-rotate="onRotate"
@@ -61,8 +63,8 @@ export default defineComponent({
     }
     const showMultiple = () => {
       imgsRef.value = [
-        'http://via.placeholder.com/2000x2000',
-        'http://via.placeholder.com/350x150'
+        'https://loremipsum.imgix.net/gPyHKDGI0md4NkRDjs4k8/36be1e73008a0181c1980f727f29d002/avatar-placeholder-generator-500x500.jpg?w=1280&q=60&auto=format,compress',
+        'https://loremipsum.imgix.net/oPtkn7DsBOsv8aitV1qns/1606c26302d81bab448e3a39581f86b5/lorem-flickr-1280x720.jpg?w=1280&q=60&auto=format,compress'
       ]
       changeIndex()
       show()

@@ -11,7 +11,8 @@ import {
   Transition,
   withModifiers,
   TeleportProps,
-  Teleport
+  Teleport,
+  watchEffect
 } from 'vue'
 
 import { SvgIcon } from './components/svg-icon'
@@ -99,7 +100,7 @@ export default defineComponent({
     },
     minZoom: {
       type: Number,
-      default: 0.1
+      default: 0.5
     },
     rotateDisabled: {
       type: Boolean,
@@ -328,11 +329,16 @@ export default defineComponent({
     }
 
     // mouse
-    const { onMouseDown, onMouseMove, onMouseUp } = useMouse(
-      imgWrapperState,
-      status,
-      canMove
-    )
+    const {
+      onMouseDown,
+      onMouseMove,
+      onMouseUp: _onMouseUp
+    } = useMouse(imgWrapperState, status, canMove)
+
+    const onMouseUp = (e: MouseEvent) => {
+      _onMouseUp(e)
+      clampPosition()
+    }
 
     const { onTouchStart, onTouchMove, onTouchEnd } = useTouch(
       imgState,
@@ -435,7 +441,7 @@ export default defineComponent({
       () => status.dragging,
       (newStatus, oldStatus) => {
         const dragged = !newStatus && oldStatus
-
+        console.log('dragged', dragged)
         if (!canMove() && dragged) {
           const xDiff = imgWrapperState.lastX - imgWrapperState.initX
           const yDiff = imgWrapperState.lastY - imgWrapperState.initY
@@ -477,6 +483,61 @@ export default defineComponent({
         }
       }
     )
+
+    const getViewportSize = () => {
+      const el = document.querySelector(`.vel-modal`) as HTMLElement | null
+      console.log(el)
+      if (!el) return { w: window.innerWidth, h: window.innerHeight }
+      const rect = el.getBoundingClientRect()
+      return { w: rect.width, h: rect.height }
+    }
+
+    // вернуть размеры «рамки» изображения с учетом поворота и масштаба
+    const getDisplayedImageSize = () => {
+      // реальные размеры картинки, рассчитанные useImage/setImgSize сохраняет в imgState
+      const iw = imgState.width
+      const ih = imgState.height
+      const scale = imgWrapperState.scale
+      // const rad = (imgWrapperState.rotateDeg % 180 === 0 ? 0 : Math.PI / 2)
+      // Для 0/90/180/270 можно упростить: при 90° меняются местами ширина/высота до масштабирования
+      if (Math.abs(imgWrapperState.rotateDeg % 180) === 90) {
+        return { w: ih * scale, h: iw * scale }
+      }
+      return { w: iw * scale, h: ih * scale }
+    }
+
+    // ограничить смещение так, чтобы не вылезать за края
+    const clampPosition = () => {
+      const { w: vw, h: vh } = getViewportSize()
+      const { w: iw, h: ih } = getDisplayedImageSize()
+
+      // центрирование выполнено через transform translate(-50%, -50%) + left/top
+      // Допустимое смещение: половина разницы между viewport и image
+      // const maxOffsetX = Math.max(0, (vw - iw) / 2)
+      // const maxOffsetY = Math.max(0, (vh - ih) / 2)
+
+      // Если изображение меньше вьюпорта, оставляем центрированным (не даем «гулять»)
+      const minLeft = -Math.max(0, (iw - vw) / 2)
+      const maxLeft = Math.max(0, (iw - vw) / 2)
+      const minTop = -Math.max(0, (ih - vh) / 2)
+      const maxTop = Math.max(0, (ih - vh) / 2)
+
+      // Когда картинка меньше вьюпорта — оба диапазона схлопнутся к 0
+      const clampedLeft = Math.min(
+        maxLeft,
+        Math.max(minLeft, imgWrapperState.left)
+      )
+      const clampedTop = Math.min(maxTop, Math.max(minTop, imgWrapperState.top))
+
+      imgWrapperState.left = clampedLeft
+      imgWrapperState.top = clampedTop
+    }
+
+    watchEffect(() => {
+      // при любых изменениях scale/left/top/rotate — поджимаем в пределы
+      console.log('clampPosition')
+      clampPosition()
+    })
 
     const disableScrolling = () => {
       if (!document) return
