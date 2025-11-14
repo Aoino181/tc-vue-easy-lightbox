@@ -11,8 +11,7 @@ import {
   Transition,
   withModifiers,
   TeleportProps,
-  Teleport,
-  watchEffect
+  Teleport
 } from 'vue'
 
 import { SvgIcon } from './components/svg-icon'
@@ -44,7 +43,7 @@ export default defineComponent({
   props: {
     imgs: {
       type: [Array, String] as PropType<PropsImgs>,
-      default: () => ''
+      default: () => []
     },
     visible: {
       type: Boolean,
@@ -338,15 +337,26 @@ export default defineComponent({
     const onMouseUp = (e: MouseEvent) => {
       _onMouseUp(e)
       clampPosition()
+      maybeSwitchOnDragEnd()
     }
 
-    const { onTouchStart, onTouchMove, onTouchEnd } = useTouch(
+    const {
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd: _onTouchEnd
+    } = useTouch(
       imgState,
       imgWrapperState,
       status,
       canMove,
       () => !props.pinchDisabled
     )
+
+    const onTouchEnd = () => {
+      _onTouchEnd()
+      maybeSwitchOnDragEnd()
+      clampPosition()
+    }
 
     const onDblclick = () => {
       if (props.dblclickDisabled) return
@@ -356,6 +366,7 @@ export default defineComponent({
       } else {
         imgWrapperState.scale = imgWrapperState.lastScale
       }
+      clampPosition()
     }
 
     const onWheel = (e: WheelEvent) => {
@@ -377,11 +388,11 @@ export default defineComponent({
         status.wheeling = false
       }, 80)
 
-      if (e.deltaY < 0) {
-        zoomIn()
-      } else {
-        zoomOut()
-      }
+      const step = props.zoomScale
+      const direction = e.deltaY < 0 ? 1 : -1
+      const targetScale = imgWrapperState.scale + direction * step
+
+      zoomAroundPoint(targetScale, e.clientX, e.clientY)
     }
 
     // key press events handler
@@ -437,11 +448,52 @@ export default defineComponent({
       }
     )
 
+    const canShiftFurtherX = (dx: number) => {
+      const { w: vw } = getViewportSize()
+      const { w: iw } = getDisplayedImageSize()
+
+      if (iw <= vw) {
+        return false
+      }
+
+      const minLeft = -Math.max(0, (iw - vw) / 2)
+      const maxLeft = Math.max(0, (iw - vw) / 2)
+
+      const nextLeft = imgWrapperState.left + dx
+
+      if (dx < 0) {
+        return nextLeft > minLeft
+      } else if (dx > 0) {
+        return nextLeft < maxLeft
+      }
+      return true
+    }
+
+    const maybeSwitchOnDragEnd = () => {
+      const tolerance = props.swipeTolerance
+      const xDiff = imgWrapperState.lastX - imgWrapperState.initX
+      const yDiff = imgWrapperState.lastY - imgWrapperState.initY
+
+      const movedHorizontally = Math.abs(xDiff) > Math.abs(yDiff)
+      if (!movedHorizontally) return
+
+      const wantsNext = xDiff < -tolerance
+      const wantsPrev = xDiff > tolerance
+      if (!wantsNext && !wantsPrev) return
+
+      const dx = wantsNext ? -1 : 1
+      const stillCanShift = canShiftFurtherX(dx)
+
+      if (!stillCanShift) {
+        if (wantsNext) onNext()
+        else if (wantsPrev) onPrev()
+      }
+    }
+
     watch(
       () => status.dragging,
       (newStatus, oldStatus) => {
         const dragged = !newStatus && oldStatus
-        console.log('dragged', dragged)
         if (!canMove() && dragged) {
           const xDiff = imgWrapperState.lastX - imgWrapperState.initX
           const yDiff = imgWrapperState.lastY - imgWrapperState.initY
@@ -453,6 +505,7 @@ export default defineComponent({
             if (xDiff < tolerance * -1) onNext()
             else if (xDiff > tolerance) onPrev()
           }
+          console.log(movedHorizontally, tolerance)
         }
       }
     )
@@ -486,43 +539,34 @@ export default defineComponent({
 
     const getViewportSize = () => {
       const el = document.querySelector(`.vel-modal`) as HTMLElement | null
-      console.log(el)
       if (!el) return { w: window.innerWidth, h: window.innerHeight }
       const rect = el.getBoundingClientRect()
       return { w: rect.width, h: rect.height }
     }
 
-    // вернуть размеры «рамки» изображения с учетом поворота и масштаба
     const getDisplayedImageSize = () => {
-      // реальные размеры картинки, рассчитанные useImage/setImgSize сохраняет в imgState
       const iw = imgState.width
       const ih = imgState.height
       const scale = imgWrapperState.scale
       // const rad = (imgWrapperState.rotateDeg % 180 === 0 ? 0 : Math.PI / 2)
-      // Для 0/90/180/270 можно упростить: при 90° меняются местами ширина/высота до масштабирования
       if (Math.abs(imgWrapperState.rotateDeg % 180) === 90) {
         return { w: ih * scale, h: iw * scale }
       }
       return { w: iw * scale, h: ih * scale }
     }
 
-    // ограничить смещение так, чтобы не вылезать за края
     const clampPosition = () => {
       const { w: vw, h: vh } = getViewportSize()
       const { w: iw, h: ih } = getDisplayedImageSize()
 
-      // центрирование выполнено через transform translate(-50%, -50%) + left/top
-      // Допустимое смещение: половина разницы между viewport и image
       // const maxOffsetX = Math.max(0, (vw - iw) / 2)
       // const maxOffsetY = Math.max(0, (vh - ih) / 2)
 
-      // Если изображение меньше вьюпорта, оставляем центрированным (не даем «гулять»)
       const minLeft = -Math.max(0, (iw - vw) / 2)
       const maxLeft = Math.max(0, (iw - vw) / 2)
       const minTop = -Math.max(0, (ih - vh) / 2)
       const maxTop = Math.max(0, (ih - vh) / 2)
 
-      // Когда картинка меньше вьюпорта — оба диапазона схлопнутся к 0
       const clampedLeft = Math.min(
         maxLeft,
         Math.max(minLeft, imgWrapperState.left)
@@ -533,11 +577,77 @@ export default defineComponent({
       imgWrapperState.top = clampedTop
     }
 
-    watchEffect(() => {
-      // при любых изменениях scale/left/top/rotate — поджимаем в пределы
-      console.log('clampPosition')
+    const getImageCenterOnScreen = () => {
+      const { w: vw, h: vh } = getViewportSize()
+      return {
+        cx: vw / 2 + imgWrapperState.left,
+        cy: vh / 2 + imgWrapperState.top
+      }
+    }
+
+    const screenToImage = (clientX: number, clientY: number) => {
+      const { cx, cy } = getImageCenterOnScreen()
+      const { w, h } = getDisplayedImageSize()
+
+      const dx = clientX - cx
+      const dy = clientY - cy
+
+      const theta = ((imgWrapperState.rotateDeg % 360) * Math.PI) / 180
+      const cos = Math.cos(-theta)
+      const sin = Math.sin(-theta)
+      const rx = dx * cos - dy * sin
+      const ry = dx * sin + dy * cos
+
+      const localX = rx + w / 2
+      const localY = ry + h / 2
+      return { x: localX, y: localY }
+    }
+
+    const imageToScreen = (localX: number, localY: number) => {
+      const { cx, cy } = getImageCenterOnScreen()
+      const { w, h } = getDisplayedImageSize()
+
+      const rx = localX - w / 2
+      const ry = localY - h / 2
+
+      const theta = ((imgWrapperState.rotateDeg % 360) * Math.PI) / 180
+      const cos = Math.cos(theta)
+      const sin = Math.sin(theta)
+
+      const dx = rx * cos - ry * sin
+      const dy = rx * sin + ry * cos
+
+      return { x: cx + dx, y: cy + dy }
+    }
+
+    const zoomAroundPoint = (newScale: number, fx: number, fy: number) => {
+      if (Math.abs(1 - newScale) < 0.05) newScale = 1
+      else if (Math.abs(imgState.maxScale - newScale) < 0.05)
+        newScale = imgState.maxScale
+
+      const before = screenToImage(fx, fy)
+
+      const prevScale = imgWrapperState.scale
+      imgWrapperState.lastScale = prevScale
+
+      const maxAllowed = imgState.maxScale * props.maxZoom
+      const minAllowed = props.minZoom
+      newScale = Math.min(Math.max(newScale, minAllowed), maxAllowed)
+
+      imgWrapperState.scale = newScale
+
+      const afterScreen = imageToScreen(
+        before.x * (newScale / prevScale),
+        before.y * (newScale / prevScale)
+      )
+
+      const dx = fx - afterScreen.x
+      const dy = fy - afterScreen.y
+      imgWrapperState.left += dx
+      imgWrapperState.top += dy
+
       clampPosition()
-    })
+    }
 
     const disableScrolling = () => {
       if (!document) return
@@ -552,11 +662,21 @@ export default defineComponent({
 
     onMounted(() => {
       on(document, 'keydown', onKeyPress)
+      on(window, 'mouseup', onMouseUp)
+      on(window, 'mouseleave', onMouseUp)
+      on(window, 'touchend', onTouchEnd)
+      on(window, 'touchcancel', onTouchEnd)
+      on(window, 'blur', onMouseUp)
       on(window, 'resize', onWindowResize)
     })
 
     onBeforeUnmount(() => {
       off(document, 'keydown', onKeyPress)
+      off(window, 'mouseup', onMouseUp)
+      off(window, 'mouseleave', onMouseUp)
+      off(window, 'touchend', onTouchEnd)
+      off(window, 'touchcancel', onTouchEnd)
+      off(window, 'blur', onMouseUp)
       off(window, 'resize', onWindowResize)
       if (props.scrollDisabled) {
         enableScrolling()

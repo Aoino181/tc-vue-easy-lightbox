@@ -1,6 +1,6 @@
 {
   "name": "tc-vue-easy-lightbox",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "A Vue.js 3.0 image lightbox component with Zoom / Drag / Rotate / Switch",
   "keywords": [
     "vue",
@@ -53,12 +53,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Aoino181/vue-easy-lightbox.git"
+    "url": "git+https://github.com/Aoino181/tc-vue-easy-lightbox.git"
   },
   "bugs": {
-    "url": "https://github.com/Aoino181/vue-easy-lightbox/issues"
+    "url": "https://github.com/Aoino181/tc-vue-easy-lightbox/issues"
   },
-  "homepage": "https://github.com/Aoino181/vue-easy-lightbox",
+  "homepage": "https://github.com/Aoino181/tc-vue-easy-lightbox",
   "peerDependencies": {
     "vue": "^3.0.0"
   },
