@@ -11,11 +11,13 @@ export default defineComponent({
       imgs: [
         {
           title: "img's url: https://i.loli.net/2018/11/10/5be6852cdb002.jpeg",
-          src: ' https://i.loli.net/2018/11/10/5be6852cdb002.jpeg'
+          src: ' https://i.loli.net/2018/11/10/5be6852cdb002.jpeg',
+          type: 'image'
         },
         {
           title: "There is img's description",
-          src: 'https://i.loli.net/2018/11/10/5be6852ce6965.jpeg'
+          src: 'https://i.loli.net/2018/11/10/5be6852ce6965.jpeg',
+          type: 'image'
         },
         'https://via.placeholder.com/300',
         'https://i.loli.net/2018/11/10/5be6852dec46e.jpeg',

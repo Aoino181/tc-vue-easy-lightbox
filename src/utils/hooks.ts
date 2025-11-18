@@ -35,7 +35,9 @@ export const useImage = () => {
 export const useMouse = (
   wrapperState: IImgWrapperState,
   status: IStatus,
-  canMove: (button?: number) => boolean
+  canMove: (button?: number) => boolean,
+  canMoveX: () => boolean,
+  canMoveY: () => boolean
 ) => {
   let rafId: number
   let ticking = false
@@ -65,8 +67,13 @@ export const useMouse = (
 
         rafId = raf(() => {
           const { top, left, lastY, lastX } = wrapperState
-          wrapperState.top = top - lastY + e.clientY
-          wrapperState.left = left - lastX + e.clientX
+          if (canMoveY()) {
+            wrapperState.top = top - lastY + e.clientY
+            console.log(canMoveY())
+          }
+          if (canMoveX()) {
+            wrapperState.left = left - lastX + e.clientX
+          }
           wrapperState.lastX = e.clientX
           wrapperState.lastY = e.clientY
           ticking = false
@@ -93,7 +100,9 @@ export const useTouch = (
   wrapperState: IImgWrapperState,
   status: IStatus,
   canMove: (button?: number) => boolean,
-  canPinch: () => boolean
+  canPinch: () => boolean,
+  canMoveX: () => boolean,
+  canMoveY: () => boolean
 ) => {
   // touch event handler
   let rafId: number
@@ -123,10 +132,15 @@ export const useTouch = (
 
       if (canMove()) {
         rafId = raf(() => {
+          if (canMoveY()) {
+            wrapperState.top = top - lastY + clientY
+            console.log(canMoveY())
+          }
+          if (canMoveX()) {
+            wrapperState.left = left - lastX + clientX
+          }
           wrapperState.lastX = clientX
           wrapperState.lastY = clientY
-          wrapperState.top = top - lastY + clientY
-          wrapperState.left = left - lastX + clientX
           ticking = false
         })
       } else {

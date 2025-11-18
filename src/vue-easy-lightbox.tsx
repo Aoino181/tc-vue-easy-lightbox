@@ -101,6 +101,10 @@ export default defineComponent({
       type: Number,
       default: 0.5
     },
+    paginationDisabled: {
+      type: Boolean,
+      default: false
+    },
     rotateDisabled: {
       type: Boolean,
       default: false
@@ -216,7 +220,7 @@ export default defineComponent({
       imgWrapperState.left = 0
       status.loadError = false
       status.dragging = false
-      status.loading = true
+      status.loading = currentImg.value.type === 'image'
     }
 
     // switching imgs manually
@@ -328,34 +332,64 @@ export default defineComponent({
     }
 
     // mouse
+
+    const canMoveX = () => {
+      // Можно двигать по X, если видимая ширина изображения больше ширины модального окна
+      const { w: vw } = getViewportSize()
+      const { w: iw } = getDisplayedImageSize()
+      return iw > vw
+    }
+
+    const canMoveY = () => {
+      // Можно двигать по Y, если видимая высота изображения больше высоты модального окна
+      const { h: vh } = getViewportSize()
+      const { h: ih } = getDisplayedImageSize()
+      return ih > vh
+    }
+
     const {
       onMouseDown,
-      onMouseMove,
+      onMouseMove: _onMouseMove,
       onMouseUp: _onMouseUp
-    } = useMouse(imgWrapperState, status, canMove)
+    } = useMouse(imgWrapperState, status, canMove, canMoveX, canMoveY)
 
     const onMouseUp = (e: MouseEvent) => {
       _onMouseUp(e)
       clampPosition()
       maybeSwitchOnDragEnd()
+      console.log(imgList.value)
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      _onMouseMove(e)
+      clampPosition()
+      // maybeSwitchOnDragEnd()
     }
 
     const {
       onTouchStart,
-      onTouchMove,
+      onTouchMove: _onTouchMove,
       onTouchEnd: _onTouchEnd
     } = useTouch(
       imgState,
       imgWrapperState,
       status,
       canMove,
-      () => !props.pinchDisabled
+      () => !props.pinchDisabled,
+      canMoveX,
+      canMoveY
     )
 
     const onTouchEnd = () => {
       _onTouchEnd()
-      maybeSwitchOnDragEnd()
       clampPosition()
+      maybeSwitchOnDragEnd()
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      _onTouchMove(e)
+      clampPosition()
+      // maybeSwitchOnDragEnd()
     }
 
     const onDblclick = () => {
@@ -448,30 +482,31 @@ export default defineComponent({
       }
     )
 
-    const canShiftFurtherX = (dx: number) => {
-      const { w: vw } = getViewportSize()
-      const { w: iw } = getDisplayedImageSize()
-
-      if (iw <= vw) {
-        return false
-      }
-
-      const minLeft = -Math.max(0, (iw - vw) / 2)
-      const maxLeft = Math.max(0, (iw - vw) / 2)
-
-      const nextLeft = imgWrapperState.left + dx
-
-      if (dx < 0) {
-        return nextLeft > minLeft
-      } else if (dx > 0) {
-        return nextLeft < maxLeft
-      }
-      return true
-    }
+    // const canShiftFurtherX = (dx: number) => {
+    //   const { w: vw } = getViewportSize()
+    //   const { w: iw } = getDisplayedImageSize()
+    //
+    //   if (iw <= vw) {
+    //     return false
+    //   }
+    //
+    //   const minLeft = -Math.max(0, (iw - vw) / 2)
+    //   const maxLeft = Math.max(0, (iw - vw) / 2)
+    //
+    //   const nextLeft = imgWrapperState.left + dx
+    //
+    //   if (dx < 0) {
+    //     return nextLeft > minLeft
+    //   } else if (dx > 0) {
+    //     return nextLeft < maxLeft
+    //   }
+    //   return true
+    // }
 
     const maybeSwitchOnDragEnd = () => {
       const tolerance = props.swipeTolerance
       const xDiff = imgWrapperState.lastX - imgWrapperState.initX
+
       const yDiff = imgWrapperState.lastY - imgWrapperState.initY
 
       const movedHorizontally = Math.abs(xDiff) > Math.abs(yDiff)
@@ -481,20 +516,22 @@ export default defineComponent({
       const wantsPrev = xDiff > tolerance
       if (!wantsNext && !wantsPrev) return
 
-      const dx = wantsNext ? -1 : 1
-      const stillCanShift = canShiftFurtherX(dx)
+      // const dx = wantsNext ? -1 : 1
+      // const stillCanShift = canShiftFurtherX(dx)
 
-      if (!stillCanShift) {
-        if (wantsNext) onNext()
-        else if (wantsPrev) onPrev()
-      }
+      // console.log(canShiftFurtherX(dx), wantsNext, wantsPrev)
+      //
+      // if (!stillCanShift) {
+      //   if (wantsNext) onNext()
+      //   else if (wantsPrev) onPrev()
+      // }
     }
 
     watch(
       () => status.dragging,
       (newStatus, oldStatus) => {
         const dragged = !newStatus && oldStatus
-        if (!canMove() && dragged) {
+        if (!canMoveX() && dragged) {
           const xDiff = imgWrapperState.lastX - imgWrapperState.initX
           const yDiff = imgWrapperState.lastY - imgWrapperState.initY
 
@@ -575,6 +612,7 @@ export default defineComponent({
 
       imgWrapperState.left = clampedLeft
       imgWrapperState.top = clampedTop
+      console.log(clampedLeft, clampedTop)
     }
 
     const getImageCenterOnScreen = () => {
@@ -703,39 +741,74 @@ export default defineComponent({
     }
 
     const renderImgWrapper = () => {
-      return (
-        <div
-          class={`${prefixCls}-img-wrapper`}
-          style={imgWrapperStyle.value}
-          key="img-wrapper"
-        >
-          <img
-            alt={currentImgAlt.value}
-            ref={imgRef}
-            draggable="false"
-            class={`${prefixCls}-img`}
-            src={currentImgSrc.value}
-            onMousedown={onMouseDown}
-            onMouseup={onMouseUp}
-            onMousemove={onMouseMove}
-            onTouchstart={onTouchStart}
-            onTouchmove={onTouchMove}
-            onTouchend={onTouchEnd}
-            onLoad={onImgLoad}
-            onDblclick={onDblclick}
-            onDragstart={(e) => {
-              e.preventDefault()
-            }}
-          />
-        </div>
-      )
+      if (currentImg.value?.type === 'image') {
+        return (
+          <div
+            class={`${prefixCls}-img-wrapper`}
+            style={imgWrapperStyle.value}
+            key="img-wrapper"
+          >
+            <img
+              alt={currentImgAlt.value}
+              ref={imgRef}
+              draggable="false"
+              class={`${prefixCls}-img`}
+              src={currentImgSrc.value}
+              onMousedown={onMouseDown}
+              onMouseup={onMouseUp}
+              onMousemove={onMouseMove}
+              onTouchstart={onTouchStart}
+              onTouchmove={onTouchMove}
+              onTouchend={onTouchEnd}
+              onLoad={onImgLoad}
+              onDblclick={onDblclick}
+              onDragstart={(e) => {
+                e.preventDefault()
+              }}
+            />
+          </div>
+        )
+      } else if (currentImg.value?.type === 'video') {
+        // return slots['video']
+        return (
+          <div
+            class={`${prefixCls}-img-wrapper`}
+            style={imgWrapperStyle.value}
+            key="img-wrapper"
+          >
+            <video
+              alt={currentImgAlt.value}
+              ref={imgRef}
+              draggable="false"
+              class={`${prefixCls}-img`}
+              src={`${currentImgSrc.value}#t=0.005`}
+              onMousedown={onMouseDown}
+              onMouseup={onMouseUp}
+              onMousemove={onMouseMove}
+              onTouchstart={onTouchStart}
+              onTouchmove={onTouchMove}
+              onTouchend={onTouchEnd}
+              onLoad={onImgLoad}
+              onDblclick={onDblclick}
+              onDragstart={(e) => {
+                e.preventDefault()
+              }}
+              controls
+              playsinline
+              preload="metadata"
+            />
+          </div>
+        )
+      }
     }
 
     const renderWrapper = () => {
-      if (status.loading) {
-        return renderLoading()
-      } else if (status.loadError) {
-        return renderOnError()
+      if (currentImg.value?.type === 'image') {
+        if (status.loading) {
+          return renderLoading()
+        } else if (status.loadError) {
+          return renderOnError()
+        }
       }
       return renderImgWrapper()
     }
@@ -861,6 +934,39 @@ export default defineComponent({
       return
     }
 
+    const renderPagination = () => {
+      if (props.paginationDisabled) return
+
+      return (
+        <div class={`${prefixCls}-pagination`}>
+          {imgList.value.map((_, i) => {
+            const isActive = i === imgIndex.value
+            // const isDisabled =
+            //   !props.loop && (i === imgIndex.value ||
+            //     (imgIndex.value === 0 && i < 0) ||
+            //     (imgIndex.value === imgList.value.length - 1 && i > imgList.value.length - 1))
+
+            return (
+              <button
+                key={`vel-bullet-${i}`}
+                type="button"
+                class={[
+                  `${prefixCls}-bullet`,
+                  isActive ? 'is-active' : ''
+                ].join(' ')}
+                aria-label={`Go to item ${i + 1}`}
+                aria-current={isActive ? 'true' : 'false'}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  changeIndex(i)
+                }}
+              />
+            )
+          })}
+        </div>
+      )
+    }
+
     const renderModal = () => {
       if (!props.visible) {
         return
@@ -886,6 +992,7 @@ export default defineComponent({
             {renderNextBtn()}
             {renderImgTitle()}
             {renderCloseBtn()}
+            {renderPagination()}
             {renderToolbar()}
           </div>
         </div>

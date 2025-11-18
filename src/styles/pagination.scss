@@ -1,0 +1,33 @@
+.vel-pagination {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 72px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+/* Буллиты */
+.vel-bullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.5);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color .2s ease, transform .2s ease;
+}
+
+.vel-bullet:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.1);
+}
+
+.vel-bullet.is-active {
+  background: #fff;
+  transform: scale(1.2);
+}

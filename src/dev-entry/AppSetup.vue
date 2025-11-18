@@ -21,6 +21,17 @@
       <template #title="titleSlotProps">
         <div class="vel-img-title">{{ titleSlotProps.currentImg?.title }}</div>
       </template>
+      <template #video>
+        <div class="w-full pt-[87.87%]">
+          <video
+            :src="`${imgsRef?.[indexRef]?.url}#t=0.005`"
+            class="absolute top-0 left-0 w-full h-full"
+            controls
+            playsinline
+            preload="metadata"
+          />
+        </div>
+      </template>
     </vue-easy-lightbox>
   </div>
 </template>
@@ -62,15 +73,33 @@ export default defineComponent({
     }
     const showMultiple = () => {
       imgsRef.value = [
-        'https://loremipsum.imgix.net/gPyHKDGI0md4NkRDjs4k8/36be1e73008a0181c1980f727f29d002/avatar-placeholder-generator-500x500.jpg?w=1280&q=60&auto=format,compress',
-        'https://loremipsum.imgix.net/oPtkn7DsBOsv8aitV1qns/1606c26302d81bab448e3a39581f86b5/lorem-flickr-1280x720.jpg?w=1280&q=60&auto=format,compress'
+        {
+          title: "img's url: https://i.loli.net/2018/11/10/5be6852cdb002.jpeg",
+          src: 'https://loremipsum.imgix.net/gPyHKDGI0md4NkRDjs4k8/36be1e73008a0181c1980f727f29d002/avatar-placeholder-generator-500x500.jpg?w=1280&q=60&auto=format,compress',
+          type: 'image'
+        },
+        {
+          title: "There is img's description",
+          src: 'https://loremipsum.imgix.net/oPtkn7DsBOsv8aitV1qns/1606c26302d81bab448e3a39581f86b5/lorem-flickr-1280x720.jpg?w=1280&q=60&auto=format,compress',
+          type: 'image'
+        },
+        {
+          title: 'VIDEO',
+          src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4#t=0.005',
+          type: 'video'
+        },
+        {
+          title: "There is img's description",
+          src: 'https://loremipsum.imgix.net/oPtkn7DsBOsv8aitV1qns/1606c26302d81bab448e3a39581f86b5/lorem-flickr-1280x720.jpg?w=1280&q=60&auto=format,compress',
+          type: 'image'
+        }
       ]
       changeIndex()
       show()
     }
 
     const onIndexChange = (old: number, newN: number) => {
-      console.log(old, newN)
+      console.log('onIndexChange 111', old, newN)
     }
 
     const onRotate = (deg: number) => {
