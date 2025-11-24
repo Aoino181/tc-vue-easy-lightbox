@@ -39,8 +39,8 @@
 
 .#{$prefix-cls}-img {
   user-select: none;
-  max-width: 80vw;
-  max-height: 80vh;
+  max-width: 100vw;
+  max-height: 100vh;
   display: block;
   position: relative;
   transition: transform 0.3s ease-in-out;
@@ -48,8 +48,9 @@
   background-color: rgba(0, 0, 0, 0.7);
 
   @media (max-width: 750px) {
-    max-width: 85vw;
-    max-height: 95vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100%;
   }
 }
 

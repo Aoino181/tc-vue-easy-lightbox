@@ -77,9 +77,13 @@ export default defineComponent({
       type: [String, Object] as PropType<TeleportProps['to']>,
       default: null
     },
-    swipeTolerance: {
+    swipeToleranceX: {
       type: Number,
       default: 50
+    },
+    swipeToleranceY: {
+      type: Number,
+      default: 80
     },
     loop: {
       type: Boolean,
@@ -118,6 +122,14 @@ export default defineComponent({
       default: false
     },
     dblclickDisabled: {
+      type: Boolean,
+      default: false
+    },
+    isAlwaysShowNavigationBtn: {
+      type: Boolean,
+      default: false
+    },
+    isAlwaysShowPagination: {
       type: Boolean,
       default: false
     }
@@ -504,7 +516,7 @@ export default defineComponent({
     // }
 
     const maybeSwitchOnDragEnd = () => {
-      const tolerance = props.swipeTolerance
+      const tolerance = props.swipeToleranceX
       const xDiff = imgWrapperState.lastX - imgWrapperState.initX
 
       const yDiff = imgWrapperState.lastY - imgWrapperState.initY
@@ -535,14 +547,22 @@ export default defineComponent({
           const xDiff = imgWrapperState.lastX - imgWrapperState.initX
           const yDiff = imgWrapperState.lastY - imgWrapperState.initY
 
-          const tolerance = props.swipeTolerance
+          const toleranceX = props.swipeToleranceX
+          const toleranceY = props.swipeToleranceY
           const movedHorizontally = Math.abs(xDiff) > Math.abs(yDiff)
 
+          const movedVertically = Math.abs(yDiff) > Math.abs(xDiff)
+
           if (movedHorizontally) {
-            if (xDiff < tolerance * -1) onNext()
-            else if (xDiff > tolerance) onPrev()
+            if (xDiff < toleranceX * -1) onNext()
+            else if (xDiff > toleranceX) onPrev()
+          } else if (
+            movedVertically &&
+            (yDiff > toleranceY || yDiff < toleranceY * -1)
+          ) {
+            closeModal()
           }
-          console.log(movedHorizontally, tolerance)
+          console.log(movedHorizontally, yDiff)
         }
       }
     )
@@ -829,7 +849,9 @@ export default defineComponent({
         })
       }
 
-      if (imgList.value.length <= 1) return
+      if (!props.isAlwaysShowNAvigationBtn) {
+        if (imgList.value.length <= 1) return
+      }
 
       const isDisabled = !props.loop && imgIndex.value <= 0
 
@@ -851,8 +873,9 @@ export default defineComponent({
           next: onNext
         })
       }
-
-      if (imgList.value.length <= 1) return
+      if (!props.isAlwaysShowNAvigationBtn) {
+        if (imgList.value.length <= 1) return
+      }
 
       const isDisabled =
         !props.loop && imgIndex.value >= imgList.value.length - 1
@@ -937,6 +960,9 @@ export default defineComponent({
     const renderPagination = () => {
       if (props.paginationDisabled) return
 
+      if (!props.isAlwaysShowPagination) {
+        if (imgList.value.length <= 1) return
+      }
       return (
         <div class={`${prefixCls}-pagination`}>
           {imgList.value.map((_, i) => {
@@ -995,6 +1021,68 @@ export default defineComponent({
             {renderPagination()}
             {renderToolbar()}
           </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            style="display:none"
+          >
+            <symbol
+              id="zoomin"
+              viewBox="0 0 32 32"
+            >
+              <path
+                d="M16.0026 26.6666C21.8936 26.6666 26.6693 21.891 26.6693 15.9999C26.6693 10.1089 21.8936 5.33325 16.0026 5.33325C10.1116 5.33325 5.33594 10.1089 5.33594 15.9999C5.33594 21.891 10.1116 26.6666 16.0026 26.6666Z"
+                stroke="currentColor"
+                stroke-width="2.13333"
+                stroke-miterlimit="10"
+              />
+              <path
+                d="M21.25 16L10.75 16"
+                stroke="currentColor"
+                stroke-width="2.13333"
+                stroke-miterlimit="10"
+              />
+              <path
+                d="M16 21.25L16 10.75"
+                stroke="currentColor"
+                stroke-width="2.13333"
+                stroke-miterlimit="10"
+              />
+            </symbol>
+            <symbol
+              id="zoomout"
+              viewBox="0 0 32 32"
+            >
+              <path
+                d="M16.0026 26.6666C21.8936 26.6666 26.6693 21.891 26.6693 15.9999C26.6693 10.1089 21.8936 5.33325 16.0026 5.33325C10.1116 5.33325 5.33594 10.1089 5.33594 15.9999C5.33594 21.891 10.1116 26.6666 16.0026 26.6666Z"
+                stroke="currentColor"
+                stroke-opacity="0.5"
+                stroke-width="2.13333"
+                stroke-miterlimit="10"
+              />
+              <path
+                d="M21.25 16L10.75 16"
+                stroke="currentColor"
+                stroke-opacity="0.5"
+                stroke-width="2.13333"
+                stroke-miterlimit="10"
+              />
+            </symbol>
+            <symbol
+              id="resize"
+              viewBox="0 0 54 54"
+            >
+              <path
+                d="M16.6692 25.2727L16.6178 36.6378M16.6178 36.6378L27.9829 36.5864M16.6178 36.6378L29.6993 23.5563"
+                stroke="currentColor"
+                stroke-width="2.135"
+              />
+              <path
+                d="M25.2722 16.6685L36.6373 16.6171M36.6373 16.6171L36.5859 27.9822M36.6373 16.6171L23.5558 29.6985"
+                stroke="currentColor"
+                stroke-width="2.135"
+              />
+            </symbol>
+          </svg>
         </div>
       )
     }

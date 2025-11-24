@@ -45,24 +45,23 @@ export const Toolbar = defineComponent({
             <>
               <div
                 role="button"
-                aria-label="zoom in button"
-                class="toolbar-btn toolbar-btn__zoomin"
-                onClick={props.zoomIn}
-              >
-                <SvgIcon type="zoomin" />
-              </div>
-
-              <div
-                role="button"
                 aria-label="zoom out button"
                 class="toolbar-btn toolbar-btn__zoomout"
                 onClick={props.zoomOut}
               >
                 <SvgIcon type="zoomout" />
               </div>
+              <div
+                role="button"
+                aria-label="zoom in button"
+                class="toolbar-btn toolbar-btn__zoomin"
+                onClick={props.zoomIn}
+              >
+                <SvgIcon type="zoomin" />
+              </div>
             </>
           )}
-
+          <div class="toolbar-delimeter"></div>
           <div
             role="button"
             aria-label="resize image button"
