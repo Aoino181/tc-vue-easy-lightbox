@@ -22,15 +22,7 @@ import { ImgTitle } from './components/img-title'
 import { DefaultIcons } from './components/default-icons'
 
 import { prefixCls } from './constant'
-import {
-  on,
-  off,
-  isObject,
-  isString,
-  notEmpty,
-  isArray,
-  preventDefault
-} from './utils/index'
+import { on, off, isObject, isString, notEmpty, isArray } from './utils/index'
 import { useImage, useMouse, useTouch } from './utils/hooks'
 import { Img, IImgWrapperState, PropsImgs } from './types'
 
@@ -83,7 +75,7 @@ export default defineComponent({
     },
     swipeToleranceY: {
       type: Number,
-      default: 80
+      default: 50
     },
     loop: {
       type: Boolean,
@@ -143,7 +135,8 @@ export default defineComponent({
     'on-prev-click': (oldIndex: number, newIndex: number) => true,
     'on-next-click': (oldIndex: number, newIndex: number) => true,
     'on-index-change': (oldIndex: number, newIndex: number) => true,
-    'on-rotate': (deg: number) => true
+    'on-rotate': (deg: number) => true,
+    'on-load': () => true
     /* eslint-enable @typescript-eslint/no-unused-vars */
   },
   setup(props, { emit, slots }) {
@@ -235,6 +228,16 @@ export default defineComponent({
       status.loading = currentImg.value.type === 'image'
     }
 
+    const isResizeIn = computed(() => {
+      return imgWrapperState.scale === 1
+    })
+    const zoomInDisabled = computed(() => {
+      return imgWrapperState.scale + props.zoomScale > props.maxZoom
+    })
+    const zoomOutDisabled = computed(() => {
+      return imgWrapperState.scale - props.zoomScale < props.minZoom
+    })
+
     // switching imgs manually
     const changeIndex = (
       newIndex: number,
@@ -303,14 +306,17 @@ export default defineComponent({
 
     const zoomIn = () => {
       const newScale = imgWrapperState.scale + props.zoomScale
-      if (newScale < imgState.maxScale * props.maxZoom) {
+      if (newScale <= props.maxZoom) {
         zoom(newScale)
       }
+      // if (newScale < imgState.maxScale * props.maxZoom) {
+      //   zoom(newScale)
+      // }
     }
 
     const zoomOut = () => {
       const newScale = imgWrapperState.scale - props.zoomScale
-      if (newScale > props.minZoom) {
+      if (newScale >= props.minZoom) {
         zoom(newScale)
       }
     }
@@ -318,6 +324,10 @@ export default defineComponent({
     const emitRotate = () => {
       const deg = imgWrapperState.rotateDeg % 360
       emit('on-rotate', Math.abs(deg < 0 ? deg + 360 : deg))
+    }
+
+    const emitLoad = () => {
+      emit('on-load')
     }
 
     const rotateLeft = () => {
@@ -331,9 +341,15 @@ export default defineComponent({
     }
 
     const resize = () => {
-      imgWrapperState.scale = 1
-      imgWrapperState.top = 0
-      imgWrapperState.left = 0
+      if (imgWrapperState.scale === 1) {
+        imgWrapperState.scale = props.maxZoom
+        imgWrapperState.top = 0
+        imgWrapperState.left = 0
+      } else {
+        imgWrapperState.scale = 1
+        imgWrapperState.top = 0
+        imgWrapperState.left = 0
+      }
     }
 
     // check img moveable
@@ -345,18 +361,56 @@ export default defineComponent({
 
     // mouse
 
-    const canMoveX = () => {
+    const canMoveX = (dx = 0) => {
       // Можно двигать по X, если видимая ширина изображения больше ширины модального окна
       const { w: vw } = getViewportSize()
       const { w: iw } = getDisplayedImageSize()
-      return iw > vw
+
+      // Если изображение целиком вмещается по ширине — двигать нельзя
+      if (iw <= vw) return false
+
+      // Предельные смещения
+      const minLeft = -Math.max(0, (iw - vw) / 2)
+      const maxLeft = Math.max(0, (iw - vw) / 2)
+
+      const nextLeft = imgWrapperState.left + dx
+
+      // Если dx не задан (например, запросили просто “в принципе можно ли двигать по X?”),
+      // то возвращаем true, так как есть запас (iw > vw).
+      if (dx === 0) return true
+
+      // Двигать влево (dx < 0) можно, пока не достигли левого предела
+      if (dx < 0) return nextLeft >= minLeft
+
+      // Двигать вправо (dx > 0) можно, пока не достигли правого предела
+      if (dx > 0) return nextLeft <= maxLeft
+
+      return true
     }
 
-    const canMoveY = () => {
+    const canMoveY = (dy = 0) => {
       // Можно двигать по Y, если видимая высота изображения больше высоты модального окна
       const { h: vh } = getViewportSize()
       const { h: ih } = getDisplayedImageSize()
-      return ih > vh
+
+      // Если изображение целиком вмещается по высоте — двигать нельзя
+      if (ih <= vh) return false
+
+      // Предельные смещения
+      const minTop = -Math.max(0, (ih - vh) / 2)
+      const maxTop = Math.max(0, (ih - vh) / 2)
+
+      const nextTop = imgWrapperState.top + dy
+
+      if (dy === 0) return true
+
+      // Двигать вверх (dy < 0) можно, пока не достигли верхнего предела
+      if (dy < 0) return nextTop >= minTop
+
+      // Двигать вниз (dy > 0) можно, пока не достигли нижнего предела
+      if (dy > 0) return nextTop <= maxTop
+
+      return true
     }
 
     const {
@@ -368,8 +422,7 @@ export default defineComponent({
     const onMouseUp = (e: MouseEvent) => {
       _onMouseUp(e)
       clampPosition()
-      maybeSwitchOnDragEnd()
-      console.log(imgList.value)
+      // maybeSwitchOnDragEnd()
     }
 
     const onMouseMove = (e: MouseEvent) => {
@@ -395,7 +448,7 @@ export default defineComponent({
     const onTouchEnd = () => {
       _onTouchEnd()
       clampPosition()
-      maybeSwitchOnDragEnd()
+      // maybeSwitchOnDragEnd()
     }
 
     const onTouchMove = (e: TouchEvent) => {
@@ -406,9 +459,10 @@ export default defineComponent({
 
     const onDblclick = () => {
       if (props.dblclickDisabled) return
-      if (imgWrapperState.scale !== imgState.maxScale) {
+
+      if (imgWrapperState.scale !== props.maxZoom) {
         imgWrapperState.lastScale = imgWrapperState.scale
-        imgWrapperState.scale = imgState.maxScale
+        imgWrapperState.scale = props.maxZoom
       } else {
         imgWrapperState.scale = imgWrapperState.lastScale
       }
@@ -467,6 +521,7 @@ export default defineComponent({
     // handle loading process
     const onImgLoad = () => {
       setImgSize()
+      emitLoad()
     }
 
     const onTestImgLoad = () => {
@@ -494,26 +549,26 @@ export default defineComponent({
       }
     )
 
-    // const canShiftFurtherX = (dx: number) => {
-    //   const { w: vw } = getViewportSize()
-    //   const { w: iw } = getDisplayedImageSize()
-    //
-    //   if (iw <= vw) {
-    //     return false
-    //   }
-    //
-    //   const minLeft = -Math.max(0, (iw - vw) / 2)
-    //   const maxLeft = Math.max(0, (iw - vw) / 2)
-    //
-    //   const nextLeft = imgWrapperState.left + dx
-    //
-    //   if (dx < 0) {
-    //     return nextLeft > minLeft
-    //   } else if (dx > 0) {
-    //     return nextLeft < maxLeft
-    //   }
-    //   return true
-    // }
+    const canShiftFurtherX = (dx: number) => {
+      const { w: vw } = getViewportSize()
+      const { w: iw } = getDisplayedImageSize()
+
+      if (iw <= vw) {
+        return false
+      }
+
+      const minLeft = -Math.max(0, (iw - vw) / 2)
+      const maxLeft = Math.max(0, (iw - vw) / 2)
+
+      const nextLeft = imgWrapperState.left + dx
+
+      if (dx < 0) {
+        return nextLeft > minLeft
+      } else if (dx > 0) {
+        return nextLeft < maxLeft
+      }
+      return true
+    }
 
     const maybeSwitchOnDragEnd = () => {
       const tolerance = props.swipeToleranceX
@@ -528,22 +583,22 @@ export default defineComponent({
       const wantsPrev = xDiff > tolerance
       if (!wantsNext && !wantsPrev) return
 
-      // const dx = wantsNext ? -1 : 1
-      // const stillCanShift = canShiftFurtherX(dx)
+      const dx = wantsNext ? -1 : 1
+      const stillCanShift = canShiftFurtherX(dx)
 
-      // console.log(canShiftFurtherX(dx), wantsNext, wantsPrev)
-      //
-      // if (!stillCanShift) {
-      //   if (wantsNext) onNext()
-      //   else if (wantsPrev) onPrev()
-      // }
+      // console.log('maybeSwitchOnDragEnd', 'EMIT')
+
+      if (!stillCanShift) {
+        if (wantsNext) onNext()
+        else if (wantsPrev) onPrev()
+      }
     }
 
     watch(
       () => status.dragging,
       (newStatus, oldStatus) => {
         const dragged = !newStatus && oldStatus
-        if (!canMoveX() && dragged) {
+        if (dragged) {
           const xDiff = imgWrapperState.lastX - imgWrapperState.initX
           const yDiff = imgWrapperState.lastY - imgWrapperState.initY
 
@@ -553,16 +608,20 @@ export default defineComponent({
 
           const movedVertically = Math.abs(yDiff) > Math.abs(xDiff)
 
-          if (movedHorizontally) {
-            if (xDiff < toleranceX * -1) onNext()
-            else if (xDiff > toleranceX) onPrev()
+          if (
+            movedHorizontally &&
+            (xDiff < toleranceX * -1 || xDiff > toleranceX)
+          ) {
+            console.log('мыфТУТ')
+            // if (xDiff < toleranceX * -1) onNext()
+            // else if (xDiff > toleranceX) onPrev()
+            maybeSwitchOnDragEnd()
           } else if (
             movedVertically &&
             (yDiff > toleranceY || yDiff < toleranceY * -1)
           ) {
             closeModal()
           }
-          console.log(movedHorizontally, yDiff)
         }
       }
     )
@@ -632,7 +691,6 @@ export default defineComponent({
 
       imgWrapperState.left = clampedLeft
       imgWrapperState.top = clampedTop
-      console.log(clampedLeft, clampedTop)
     }
 
     const getImageCenterOnScreen = () => {
@@ -679,8 +737,8 @@ export default defineComponent({
     }
 
     const zoomAroundPoint = (newScale: number, fx: number, fy: number) => {
-      if (Math.abs(1 - newScale) < 0.05) newScale = 1
-      else if (Math.abs(imgState.maxScale - newScale) < 0.05)
+      if (Math.abs(1 - newScale) < 0.5) newScale = 1
+      else if (Math.abs(imgState.maxScale - newScale) < 0.5)
         newScale = imgState.maxScale
 
       const before = screenToImage(fx, fy)
@@ -688,7 +746,7 @@ export default defineComponent({
       const prevScale = imgWrapperState.scale
       imgWrapperState.lastScale = prevScale
 
-      const maxAllowed = imgState.maxScale * props.maxZoom
+      const maxAllowed = props.maxZoom
       const minAllowed = props.minZoom
       newScale = Math.min(Math.max(newScale, minAllowed), maxAllowed)
 
@@ -782,6 +840,7 @@ export default defineComponent({
               onTouchend={onTouchEnd}
               onLoad={onImgLoad}
               onDblclick={onDblclick}
+              onDbltap={onDblclick}
               onDragstart={(e) => {
                 e.preventDefault()
               }}
@@ -800,7 +859,7 @@ export default defineComponent({
               alt={currentImgAlt.value}
               ref={imgRef}
               draggable="false"
-              class={`${prefixCls}-img`}
+              class={`${prefixCls}-img tc-easy-lightbox-video`}
               src={`${currentImgSrc.value}#t=0.005`}
               onMousedown={onMouseDown}
               onMouseup={onMouseUp}
@@ -849,7 +908,7 @@ export default defineComponent({
         })
       }
 
-      if (!props.isAlwaysShowNAvigationBtn) {
+      if (!props.isAlwaysShowNavigationBtn) {
         if (imgList.value.length <= 1) return
       }
 
@@ -873,7 +932,7 @@ export default defineComponent({
           next: onNext
         })
       }
-      if (!props.isAlwaysShowNAvigationBtn) {
+      if (!props.isAlwaysShowNavigationBtn) {
         if (imgList.value.length <= 1) return
       }
 
@@ -932,10 +991,13 @@ export default defineComponent({
           zoomIn={zoomIn}
           zoomOut={zoomOut}
           resize={resize}
+          isResizeIn={isResizeIn.value}
           rotateLeft={rotateLeft}
           rotateRight={rotateRight}
           rotateDisabled={props.rotateDisabled}
           zoomDisabled={props.zoomDisabled}
+          zoomInDisabled={zoomInDisabled.value}
+          zoomOutDisabled={zoomOutDisabled.value}
         />
       )
     }
@@ -1000,9 +1062,15 @@ export default defineComponent({
 
       return (
         <div
-          onTouchmove={preventDefault}
+          onTouchmove={onTouchMove}
           class={[`${prefixCls}-modal`, props.rtl ? 'is-rtl' : '']}
           onClick={withModifiers(onMaskClick, ['self'])}
+          onDblclick={withModifiers(onDblclick, ['self'])}
+          onMousedown={onMouseDown}
+          onMouseup={onMouseUp}
+          onMousemove={onMouseMove}
+          onTouchstart={onTouchStart}
+          onTouchend={onTouchEnd}
           onWheel={onWheel}
         >
           <DefaultIcons />
@@ -1078,6 +1146,23 @@ export default defineComponent({
               />
               <path
                 d="M25.2722 16.6685L36.6373 16.6171M36.6373 16.6171L36.5859 27.9822M36.6373 16.6171L23.5558 29.6985"
+                stroke="currentColor"
+                stroke-width="2.135"
+              />
+            </symbol>
+            <symbol
+              id="icon-resizeout"
+              viewBox="0 0 62 62"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M28.5847 43.9822L28.6361 32.6171M28.6361 32.6171L17.271 32.6685M28.6361 32.6171L15.5546 45.6985"
+                stroke="currentColor"
+                stroke-width="2.135"
+              />
+              <path
+                d="M43.9817 28.5864L32.6166 28.6378M32.6166 28.6378L32.668 17.2727M32.6166 28.6378L45.6981 15.5563"
                 stroke="currentColor"
                 stroke-width="2.135"
               />

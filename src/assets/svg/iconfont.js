@@ -30,7 +30,12 @@
       '</symbol>' +
       '<symbol id="icon-zoomout" viewBox="0 0 1024 1024">' +
       '<path d="M16.0026 26.6666C21.8936 26.6666 26.6693 21.891 26.6693 15.9999C26.6693 10.1089 21.8936 5.33325 16.0026 5.33325C10.1116 5.33325 5.33594 10.1089 5.33594 15.9999C5.33594 21.891 10.1116 26.6666 16.0026 26.6666Z" stroke="currentColor" stroke-opacity="0.5" stroke-width="2.13333" stroke-miterlimit="10"/><path d="M21.25 16L10.75 16" stroke="currentColor" stroke-opacity="0.5" stroke-width="2.13333" stroke-miterlimit="10"/>' +
-      '</symbol></svg>'
+      '</symbol>' +
+      '<symbol id="icon-resizeout" viewBox="0 0 62 62" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M28.5847 43.9822L28.6361 32.6171M28.6361 32.6171L17.271 32.6685M28.6361 32.6171L15.5546 45.6985" stroke="currentColor" stroke-width="2.135"/>' +
+      '<path d="M43.9817 28.5864L32.6166 28.6378M32.6166 28.6378L32.668 17.2727M32.6166 28.6378L45.6981 15.5563" stroke="currentColor" stroke-width="2.135"/>' +
+      '</symbol>' +
+      '</svg>'
   //   tempScript = (t = document.getElementsByTagName('script'))[
   //     t.length - 1
   //   ].getAttribute('data-injectcss')

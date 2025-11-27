@@ -35,6 +35,18 @@ export const Toolbar = defineComponent({
     zoomDisabled: {
       type: Boolean,
       default: false
+    },
+    zoomInDisabled: {
+      type: Boolean,
+      default: false
+    },
+    zoomOutDisabled: {
+      type: Boolean,
+      default: false
+    },
+    isResizeIn: {
+      type: Boolean,
+      default: true
     }
   },
   setup(props) {
@@ -46,16 +58,24 @@ export const Toolbar = defineComponent({
               <div
                 role="button"
                 aria-label="zoom out button"
-                class="toolbar-btn toolbar-btn__zoomout"
-                onClick={props.zoomOut}
+                class={{
+                  'toolbar-btn': true,
+                  'toolbar-btn__zoomout': true,
+                  'toolbar-btn--disabled': props.zoomOutDisabled
+                }}
+                onClick={props.zoomOutDisabled ? undefined : props.zoomOut}
               >
                 <SvgIcon type="zoomout" />
               </div>
               <div
                 role="button"
                 aria-label="zoom in button"
-                class="toolbar-btn toolbar-btn__zoomin"
-                onClick={props.zoomIn}
+                class={{
+                  'toolbar-btn': true,
+                  'toolbar-btn__zoomin': true,
+                  'toolbar-btn--disabled': props.zoomInDisabled
+                }}
+                onClick={props.zoomInDisabled ? undefined : props.zoomIn}
               >
                 <SvgIcon type="zoomin" />
               </div>
@@ -68,7 +88,8 @@ export const Toolbar = defineComponent({
             class="toolbar-btn toolbar-btn__resize"
             onClick={props.resize}
           >
-            <SvgIcon type="resize" />
+            <SvgIcon type={props.isResizeIn ? 'resize' : 'resizeout'} />
+            {/*<SvgIcon type="resizeout" />*/}
           </div>
           {!props.rotateDisabled && (
             <>

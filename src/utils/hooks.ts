@@ -20,6 +20,7 @@ export const useImage = () => {
     if (imgRef.value) {
       const { width, height, naturalWidth } = imgRef.value
       imgState.maxScale = naturalWidth / width
+      console.log(naturalWidth, width, imgState.maxScale)
       imgState.width = width
       imgState.height = height
     }
@@ -101,8 +102,8 @@ export const useTouch = (
   status: IStatus,
   canMove: (button?: number) => boolean,
   canPinch: () => boolean,
-  canMoveX: () => boolean,
-  canMoveY: () => boolean
+  canMoveX: (dx: number | undefined) => boolean,
+  canMoveY: (dx: number | undefined) => boolean
 ) => {
   // touch event handler
   let rafId: number
@@ -130,13 +131,12 @@ export const useTouch = (
       if (!touches[0]) return
       const { clientX, clientY } = touches[0]
 
-      if (canMove()) {
+      if (canMoveY(lastY - clientY) || canMoveX(clientX - lastX)) {
         rafId = raf(() => {
-          if (canMoveY()) {
+          if (canMoveY(lastY - clientY)) {
             wrapperState.top = top - lastY + clientY
-            console.log(canMoveY())
           }
-          if (canMoveX()) {
+          if (canMoveX(clientX - lastX)) {
             wrapperState.left = left - lastX + clientX
           }
           wrapperState.lastX = clientX
