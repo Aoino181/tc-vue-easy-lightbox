@@ -70,7 +70,6 @@ export const useMouse = (
           const { top, left, lastY, lastX } = wrapperState
           if (canMoveY()) {
             wrapperState.top = top - lastY + e.clientY
-            console.log(canMoveY())
           }
           if (canMoveX()) {
             wrapperState.left = left - lastX + e.clientX
@@ -102,8 +101,8 @@ export const useTouch = (
   status: IStatus,
   canMove: (button?: number) => boolean,
   canPinch: () => boolean,
-  canMoveX: (dx: number | undefined) => boolean,
-  canMoveY: (dx: number | undefined) => boolean
+  canMoveX: (dx: number) => boolean,
+  canMoveY: (dx: number) => boolean
 ) => {
   // touch event handler
   let rafId: number
@@ -127,24 +126,48 @@ export const useTouch = (
     const { touches } = e
     const { lastX, lastY, left, top, scale } = wrapperState
 
+    // e.preventDefault?.()
+    // e.stopPropagation?.()
+
     if (!status.gesturing && status.dragging) {
       if (!touches[0]) return
       const { clientX, clientY } = touches[0]
 
-      if (canMoveY(lastY - clientY) || canMoveX(clientX - lastX)) {
+      // const dx = clientX - lastX
+      // const dy = clientY - lastY
+      //
+      // const nextLeft = left + dx
+      // const nextTop = top + dy
+
+      // if (canMoveX(nextLeft) || canMoveY(nextTop)) {
+      //   schedule(() => {
+      //     if (canMoveX(nextLeft)) {
+      //       wrapperState.left = nextLeft
+      //     }
+      //     if (canMoveY(nextTop)) {
+      //       wrapperState.top = nextTop
+      //     }
+      //     wrapperState.lastX = clientX
+      //     wrapperState.lastY = clientY
+      //   })
+      // } else {
+      //   wrapperState.lastX = clientX
+      //   wrapperState.lastY = clientY
+      // }
+
+      if (canMove()) {
         rafId = raf(() => {
-          if (canMoveY(lastY - clientY)) {
+          wrapperState.lastX = clientX
+          wrapperState.lastY = clientY
+          if (canMoveY(clientY - lastY)) {
             wrapperState.top = top - lastY + clientY
           }
           if (canMoveX(clientX - lastX)) {
             wrapperState.left = left - lastX + clientX
           }
-          wrapperState.lastX = clientX
-          wrapperState.lastY = clientY
           ticking = false
         })
       } else {
-        // for calculating the tolerance
         wrapperState.lastX = clientX
         wrapperState.lastY = clientY
       }

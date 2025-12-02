@@ -75,7 +75,7 @@ export default defineComponent({
     },
     swipeToleranceY: {
       type: Number,
-      default: 50
+      default: 120
     },
     loop: {
       type: Boolean,
@@ -143,6 +143,7 @@ export default defineComponent({
     const { imgRef, imgState, setImgSize } = useImage()
     const imgIndex = ref(props.index)
     const lastBodyStyleOverflowY = ref('')
+    const scrollBeforeOpenModalY = ref(0)
 
     const imgWrapperState = reactive<IImgWrapperState>({
       scale: 1,
@@ -454,6 +455,7 @@ export default defineComponent({
     const onTouchMove = (e: TouchEvent) => {
       _onTouchMove(e)
       clampPosition()
+      e.preventDefault()
       // maybeSwitchOnDragEnd()
     }
 
@@ -586,8 +588,6 @@ export default defineComponent({
       const dx = wantsNext ? -1 : 1
       const stillCanShift = canShiftFurtherX(dx)
 
-      // console.log('maybeSwitchOnDragEnd', 'EMIT')
-
       if (!stillCanShift) {
         if (wantsNext) onNext()
         else if (wantsPrev) onPrev()
@@ -604,21 +604,21 @@ export default defineComponent({
 
           const toleranceX = props.swipeToleranceX
           const toleranceY = props.swipeToleranceY
-          const movedHorizontally = Math.abs(xDiff) > Math.abs(yDiff)
 
+          const movedHorizontally = Math.abs(xDiff) > Math.abs(yDiff)
           const movedVertically = Math.abs(yDiff) > Math.abs(xDiff)
 
           if (
             movedHorizontally &&
             (xDiff < toleranceX * -1 || xDiff > toleranceX)
           ) {
-            console.log('мыфТУТ')
             // if (xDiff < toleranceX * -1) onNext()
             // else if (xDiff > toleranceX) onPrev()
             maybeSwitchOnDragEnd()
           } else if (
             movedVertically &&
-            (yDiff > toleranceY || yDiff < toleranceY * -1)
+            (yDiff > toleranceY || yDiff < toleranceY * -1) &&
+            !canMoveY()
           ) {
             closeModal()
           }
@@ -769,11 +769,20 @@ export default defineComponent({
       if (!document) return
       lastBodyStyleOverflowY.value = document.body.style.overflowY
       document.body.style.overflowY = 'hidden'
+      scrollBeforeOpenModalY.value = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
     }
 
     const enableScrolling = () => {
       if (!document) return
-      document.body.style.overflowY = lastBodyStyleOverflowY.value
+      nextTick(() => {
+        document.body.style.overflowY = lastBodyStyleOverflowY.value
+        document.body.style.position = ''
+        document.body.style.top = ''
+        window.scrollTo(0, scrollBeforeOpenModalY.value)
+      })
     }
 
     onMounted(() => {
@@ -1062,7 +1071,9 @@ export default defineComponent({
 
       return (
         <div
-          onTouchmove={onTouchMove}
+          onTouchmove={(e: TouchEvent) => {
+            onTouchMove(e)
+          }}
           class={[`${prefixCls}-modal`, props.rtl ? 'is-rtl' : '']}
           onClick={withModifiers(onMaskClick, ['self'])}
           onDblclick={withModifiers(onDblclick, ['self'])}

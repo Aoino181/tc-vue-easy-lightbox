@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="height: 1000px">
     <button @click="showSingle">Show single picture.</button>
     <button @click="showMultiple">Show a group of pictures.</button>
     <br />
@@ -13,7 +13,7 @@
       :index="indexRef"
       :pinchDisabled="pinchRef"
       :dblclickDisabled="false"
-      :zoomScale="0.5"
+      :zoomScale="1"
       :maxZoom="3"
       :minZoom="0.5"
       :maskClosable="false"
@@ -108,7 +108,7 @@ export default defineComponent({
     const onRotate = (deg: number) => {
       console.log(deg)
     }
-    const pinchRef = ref(true)
+    const pinchRef = ref(false)
 
     return {
       visibleRef,
